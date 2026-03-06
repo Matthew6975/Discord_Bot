@@ -76,7 +76,7 @@ class text_cog(commands.Cog):
             await ctx.send("Last warning.")
         elif self.kill_calls == 6:
             await ctx.send(file=self.image)
-            await ctx.send("You did this")
+            await ctx.send("You did this to us")
             self.kill_calls = 0
         else:
             print(f"self.kill_calls = {self.kill_calls}")
