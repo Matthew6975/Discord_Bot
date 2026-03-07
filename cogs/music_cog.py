@@ -55,10 +55,10 @@ class music_cog(commands.Cog):
         id = int(member.guild.id)
         if member.id != self.bot.user.id and before.channel != None and after.channel != before.channel:
             remaining_channel_members = before.channel.members
-            if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id].is_connected:
+            if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id].is_connected():
                 self.is_playing[id] = self.is_paused[id] = False
-                self.music_queue = []
-                self.queue_index = 0
+                self.music_queue[id] = []
+                self.queue_index[id] = 0
                 await self.vc[id].disconnect()
                 self.vc[id] = None
 
