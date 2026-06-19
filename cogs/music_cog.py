@@ -34,7 +34,12 @@ class music_cog(commands.Cog):
 
         #options/settings for YoutubeDL and ffmpeg. Full disclosure, I'm not sure what all of these do, 
         #but I got them from sample code online and they work. if it ain't broke, don't fix it.
-        self.yt_dl_options = {"format": "bestaudio/best"}
+        #self.yt_dl_options = {"format": "bestaudio/best"}
+
+        self.yt_dl_options = {
+            "format": "bestaudio/best",
+            "remote_components": ["ejs:github"]  # Allows yt-dlp to download the solver
+     }
         self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
@@ -56,10 +61,10 @@ class music_cog(commands.Cog):
         if member.id != self.bot.user.id and before.channel != None and after.channel != before.channel:
             remaining_channel_members = before.channel.members
             if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id].is_connected():
+                await self.vc[id].disconnect()
                 self.is_playing[id] = self.is_paused[id] = False
                 self.music_queue[id] = []
                 self.queue_index[id] = 0
-                await self.vc[id].disconnect()
                 self.vc[id] = None
 
 
@@ -148,7 +153,7 @@ class music_cog(commands.Cog):
                 print("search_YT, else")
                 query_string = parse.urlencode({"search_query": search})
                 htm_content = request.urlopen('https://www.youtube.com/results?' + query_string)
-                search_results = re.findall('/watch\?v=(.{11})', htm_content.read().decode())
+                search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
                 return search_results[0]
     
 
@@ -283,7 +288,7 @@ class music_cog(commands.Cog):
             else:
                 print("Play, 5")
                 return
-        else:
+        elif args:
             loading_embed = await self.gen_embed(ctx, None, 5)
             self.searching_message = await ctx.send(embed = loading_embed)
             print("Play, 6")
@@ -297,6 +302,7 @@ class music_cog(commands.Cog):
             else:
                 print("Play, 8")
                 self.music_queue[id].append([song, user_channel])
+                print(self.music_queue[id])
 
                 if not self.is_playing[id] and self.is_paused[id]:
                     print("Play, 9")

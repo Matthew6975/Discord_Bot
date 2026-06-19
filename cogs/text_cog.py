@@ -21,36 +21,36 @@ class text_cog(commands.Cog):
             
 
 
-    async def daily_shrimp(self):
-        shrimp_time = datetime.time(hour=9, minute=0, second=0)
-        now = datetime.datetime.now()
-        shrimp_datetime = datetime.datetime.combine(now.date(), shrimp_time)
-        guild_id = 1296635922325962762
-        channel_id = 1336132931592392724
+    # async def daily_shrimp(self):
+    #     shrimp_time = datetime.time(hour=9, minute=0, second=0)
+    #     now = datetime.datetime.now()
+    #     shrimp_datetime = datetime.datetime.combine(now.date(), shrimp_time)
+    #     guild_id = 1296635922325962762
+    #     channel_id = 1336132931592392724
 
-        guild = discord.utils.get(self.bot.guilds, id = guild_id)
-        if not guild:
-            print(f"Server with ID {guild_id} not found")
+    #     guild = discord.utils.get(self.bot.guilds, id = guild_id)
+    #     if not guild:
+    #         print(f"Server with ID {guild_id} not found")
 
-        channel = discord.utils.get(guild.text_channels, id = channel_id)
-        if not channel:
-            print(f"Channel starting with 'shrimp' not found in server {guild_id}")
+    #     channel = discord.utils.get(guild.text_channels, id = channel_id)
+    #     if not channel:
+    #         print(f"Channel starting with 'shrimp' not found in server {guild_id}")
 
-        if shrimp_facts == []:
-            shrimp_facts.append(used_shrimp_facts)
-            used_shrimp_facts.clear()
+    #     if shrimp_facts == []:
+    #         shrimp_facts.append(used_shrimp_facts)
+    #         used_shrimp_facts.clear()
 
-        response = random.choice(shrimp_facts)
-        shrimp_facts.remove(response)
-        used_shrimp_facts.append(response)
+    #     response = random.choice(shrimp_facts)
+    #     shrimp_facts.remove(response)
+    #     used_shrimp_facts.append(response)
 
-        if now >= shrimp_datetime:
-            shrimp_datetime += datetime.timedelta(days=1)
+    #     if now >= shrimp_datetime:
+    #         shrimp_datetime += datetime.timedelta(days=1)
 
-        wait_time =(shrimp_datetime - now).total_seconds()
-        print(f"Waiting {wait_time} seconds until Shrimp Time! ({shrimp_datetime})")
-        await asyncio.sleep(wait_time)
-        await channel.send("Here is today's Cool Shrimp fact!: \n" + response)
+    #     wait_time =(shrimp_datetime - now).total_seconds()
+    #     print(f"Waiting {wait_time} seconds until Shrimp Time! ({shrimp_datetime})")
+    #     await asyncio.sleep(wait_time)
+    #     await channel.send("Here is today's Cool Shrimp fact!: \n" + response)
 
 
 
@@ -76,12 +76,12 @@ class text_cog(commands.Cog):
             await ctx.send("Last warning.")
         elif self.kill_calls == 6:
             await ctx.send(file=self.image)
-            await ctx.send("You did this to us")
+            await ctx.send("You did this")
             self.kill_calls = 0
         else:
             print(f"self.kill_calls = {self.kill_calls}")
             self.kill_calls = 0
-            await ctx.send("--ERROR-- That broke something, but it should be reset now. Try it again!")
+            await ctx.send("--ERROR-- That broke something, but it should be reset now. Try again!")
 
 
 
