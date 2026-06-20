@@ -7,12 +7,12 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted  # This tells GitHub to use your local Ubuntu server
+    runs-on: self-hosted
 
     steps:
       - name: Pull Latest Code and Restart
         run: |
-          cd /path/to/your/bot/directory
+          cd /home/bomb/Discord_Bot
           git reset --hard HEAD
           git pull origin main
           sudo systemctl restart discord-bot
