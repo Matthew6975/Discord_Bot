@@ -13,7 +13,7 @@ shrimp_facts = [ "Shrimp are found in oceans, freshwater, and brackish water wor
     "A shrimp’s heart is located in its head!",
     "They have compound eyes that can detect polarized light.",
     "Shrimp are decapods, meaning they have ten legs.",
-    "Shrimp legs are specialized—some are for walking, others for feeding.",
+    "Shrimp legs are specialized— some are for walking, others for feeding.",
     "Their antennae can be longer than their body and are used for sensing.",
     "Shrimp can regenerate lost limbs or antennae.",
     "Their color is due to chromatophores, which can adjust pigmentation.",

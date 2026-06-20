@@ -2,8 +2,10 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
-from pw import dead_shell
+from dotenv import load_dotenv
 
+load_dotenv()
+dead_shell = os.getenv("dead_shell")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents, case_insensitive=True)
