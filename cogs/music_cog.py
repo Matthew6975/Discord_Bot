@@ -39,8 +39,12 @@ class music_cog(commands.Cog):
         self.yt_dl_options = {
             "format": "bestaudio/best",
             "remote_components": ["ejs:github"]  # Allows yt-dlp to download the solver
-     }
-        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
+        }
+        self.ffmpeg_options = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 0 -probesize 32',
+            'options': '-vn -filter:a volume=0.20'
+        }
+        # self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
     @commands.Cog.listener()
@@ -172,6 +176,12 @@ class music_cog(commands.Cog):
             "title": info["title"]
         }
     
+
+    async def play_next_callback(self, ctx, e):
+            if e:
+                print(f"[Playback Error] Player error: {e}")
+            asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+    
     #moves the bot to the next song in the queue if the current song ends.
     #calls itself towards the bottom and incriments the queue to loop and continue playing the next song automatically.
     async def play_next(self, ctx):
@@ -202,8 +212,8 @@ class music_cog(commands.Cog):
             playing_embed = await self.gen_embed(ctx, song, 1) #final argument decides the type of embed to generate. 1 generates "now playing".
             self.now_playing_message = await ctx.send(embed = playing_embed)
 
-            self.vc[id].play(discord.FFmpegOpusAudio(
-                song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
+            self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+            # self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
         
         #end of queue handling. Sends a message letting the user(s) know that the queue is empty.
         else:
