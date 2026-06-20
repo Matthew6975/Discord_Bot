@@ -32,19 +32,9 @@ class music_cog(commands.Cog):
         self.searching_message = None
         self.now_playing_message = None
 
-        #options/settings for YoutubeDL and ffmpeg. Full disclosure, I'm not sure what all of these do, 
-        #but I got them from sample code online and they work. if it ain't broke, don't fix it.
-        #self.yt_dl_options = {"format": "bestaudio/best"}
-
-        self.yt_dl_options = {
-            "format": "bestaudio/best",
-            "remote_components": ["ejs:github"]  # Allows yt-dlp to download the solver
-        }
-        self.ffmpeg_options = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 0 -probesize 32',
-            'options': '-vn -filter:a volume=0.20'
-        }
-        # self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
+        #options/settings for YoutubeDL and ffmpeg.
+        self.yt_dl_options = {"format": "bestaudio/best"}
+        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
     @commands.Cog.listener()
