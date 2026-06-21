@@ -21,7 +21,7 @@ class admin_cog(commands.Cog):
     async def reload(self, ctx):
         await ctx.send("Reloading bot...")
         id = int(ctx.guild.id)
-        if self.vc.get(id) != None and self.vc.get(id).is_connected():
+        if self.vc.get(id) != None and self.vc[id].is_connected():
             await self.vc[id].disconnect()
 
         self.is_playing[id] = False
