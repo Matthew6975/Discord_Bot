@@ -23,6 +23,8 @@ class admin_cog(commands.Cog):
         id = int(ctx.guild.id)
         if self.vc.get(id) != None and self.vc[id].is_connected():
             await self.vc[id].disconnect()
+        else:
+             await ctx.send("Bot was not connected to a voice channel")
 
         self.is_playing[id] = False
         self.is_paused[id] = False
