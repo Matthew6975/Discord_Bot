@@ -147,7 +147,7 @@ class music_cog(commands.Cog):
                 print("search_YT, else")
                 query_string = parse.urlencode({"search_query": search})
                 htm_content = request.urlopen('https://www.youtube.com/results?' + query_string)
-                search_results = re.findall(r'/watch\?v=(.{5})', htm_content.read().decode())
+                search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
                 return search_results[0]
     
 
