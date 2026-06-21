@@ -24,11 +24,11 @@ class music_cog(commands.Cog):
 
         #initializes variables the bot uses during its function.
         #the first two specifically act like switches (True/False) to help the bot track if it is playing or paused
-        self.is_playing = False
-        self.is_paused = False
-        self.music_queue = []
-        self.queue_index = 0
-        self.vc = None
+        self.is_playing = {}
+        self.is_paused = {}
+        self.music_queue = {}
+        self.queue_index = {}
+        self.vc = {}
         self.searching_message = None
         self.now_playing_message = None
 
