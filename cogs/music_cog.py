@@ -241,8 +241,9 @@ class music_cog(commands.Cog):
             else:
                 playing_embed = await self.gen_embed(ctx, song, 1)
                 self.now_playing_message = await ctx.send(embed = playing_embed)
-
-            self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+                
+            self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
+            #self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
             
         else:
             print("play music, 2")
