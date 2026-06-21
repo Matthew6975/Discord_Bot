@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands import has_permissions, MissingPermissions
+from discord.ext.commands import has_permissions
 import asyncio
 from asyncio import run_coroutine_threadsafe
 from yt_dlp import YoutubeDL
@@ -24,11 +24,11 @@ class music_cog(commands.Cog):
 
         #initializes variables the bot uses during its function.
         #the first two specifically act like switches (True/False) to help the bot track if it is playing or paused
-        self.is_playing = {}
-        self.is_paused = {}
-        self.music_queue = {}
-        self.queue_index = {}
-        self.vc = {}
+        self.is_playing = False
+        self.is_paused = False
+        self.music_queue = []
+        self.queue_index = 0
+        self.vc = None
         self.searching_message = None
         self.now_playing_message = None
 
@@ -39,7 +39,7 @@ class music_cog(commands.Cog):
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
     @commands.Cog.listener()
     async def on_ready(self):
-        print("music_cog is running! Command away!")
+        print("music_cog is running!")
         for guild in self.bot.guilds:
             id = int(guild.id)
             self.music_queue[id] = []
@@ -147,7 +147,7 @@ class music_cog(commands.Cog):
                 print("search_YT, else")
                 query_string = parse.urlencode({"search_query": search})
                 htm_content = request.urlopen('https://www.youtube.com/results?' + query_string)
-                search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
+                search_results = re.findall(r'/watch\?v=(.{1})', htm_content.read().decode())
                 return search_results[0]
     
 
@@ -182,8 +182,8 @@ class music_cog(commands.Cog):
             return
         if self.queue_index[id] + 1 < len(self.music_queue[id]):
             print("play next, if 2")
-            print(len(self.music_queue[id]))
-            print(self.queue_index[id])
+            print("length of the music queue: " + str(len(self.music_queue[id])))
+            print("Current position in the queue: " + str(self.queue_index[id]))
             self.is_playing[id] = True
             self.queue_index[id] += 1
 
@@ -213,8 +213,8 @@ class music_cog(commands.Cog):
             self.is_playing[id] = False
 
 
-    #kicks off the music playing process. Very similar ot the play next function in most of it's design.
-    #upon reviewing this code, I think I could probably combine the two functions into one to save space. Will look into this.
+    #kicks off the music playing process. Very similar to the play next function in most of it's design.
+    #upon reviewing this code, I think I could probably combine the two functions into one to save on code. Will look into this.
     async def play_music(self, ctx):
         print("play music called")
         id = int(ctx.guild.id)
@@ -242,8 +242,8 @@ class music_cog(commands.Cog):
                 playing_embed = await self.gen_embed(ctx, song, 1)
                 self.now_playing_message = await ctx.send(embed = playing_embed)
 
-            self.vc[id].play(discord.FFmpegOpusAudio(
-                song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop))
+            self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+            
         else:
             print("play music, 2")
             await ctx.send("There are no more songs in the queue")

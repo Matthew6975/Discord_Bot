@@ -16,8 +16,8 @@ class text_cog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("text_cog is running! Command away!")
-        self.bot.loop.create_task(self.daily_shrimp())
+        print("text_cog is running!")
+        #self.bot.loop.create_task(self.daily_shrimp())
             
 
 
