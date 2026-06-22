@@ -46,7 +46,7 @@ class music_cog(commands.Cog):
             self.queue_index[id] = 0
             self.vc[id] = None
             self.paused[id] = self.playing[id] = False
-            self.searching_message = self.now_playing_message = None
+            self.searching_message[id] = self.now_playing_message[id] = None
             
 
     #listener that runs when a user leaves a voice channel. If the bot is the only one left in the channel, it disconnects.
@@ -269,6 +269,7 @@ class music_cog(commands.Cog):
         print("Play command called!")
         search = " ".join(args)
         id = int(ctx.guild.id)
+        user_channel = ctx.author.voice.channel
         if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
             await ctx.send("You must be connected to the same vc as the bot to issue commands.")
         else:
@@ -335,6 +336,7 @@ class music_cog(commands.Cog):
             print("Add command called!")
             search = " ".join(args)
             id = int(ctx.guild.id)
+            user_channel = ctx.author.voice.channel
             if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
                 await ctx.send("You must be connected to the bots vc to send it commands.")
             else:
@@ -352,7 +354,7 @@ class music_cog(commands.Cog):
                             await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
                         else:
                             print("Add, 11")
-                            self.music_queue[id].insert(self.queue_index[id] + 1, [song, userChannel])
+                            self.music_queue[id].insert(self.queue_index[id] + 1, [song, user_channel])
                             if self.searching_message[id]:
                                 message = await self.gen_embed(ctx, song, 4)
                                 await self.searching_message[id].edit(embed = message)
