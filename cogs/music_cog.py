@@ -24,8 +24,8 @@ class music_cog(commands.Cog):
 
         #initializes variables the bot uses during its function.
         #the first two specifically act like switches (True/False) to help the bot track if it is playing or paused
-        self.is_playing = {}
-        self.is_paused = {}
+        self.playing = {}
+        self.paused = {}
         self.music_queue = {}
         self.queue_index = {}
         self.vc = {}
@@ -45,7 +45,7 @@ class music_cog(commands.Cog):
             self.music_queue[id] = []
             self.queue_index[id] = 0
             self.vc[id] = None
-            self.is_paused[id] = self.is_playing[id] = False
+            self.paused[id] = self.playing[id] = False
             self.searching_message = self.now_playing_message = None
             
 
@@ -57,7 +57,7 @@ class music_cog(commands.Cog):
             remaining_channel_members = before.channel.members
             if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id].is_connected():
                 await self.vc[id].disconnect()
-                self.is_playing[id] = self.is_paused[id] = False
+                self.playing[id] = self.paused[id] = False
                 self.music_queue[id] = []
                 self.queue_index[id] = 0
                 self.vc[id] = None
@@ -143,12 +143,15 @@ class music_cog(commands.Cog):
     async def search_YT(self, search):
             if "https://www.youtube.com/watch?v=" in search:
                 print("search_YT, if")
+                print(search)
                 return search
             else:
                 print("search_YT, else")
                 query_string = parse.urlencode({"search_query": search})
                 htm_content = request.urlopen('https://www.youtube.com/results?' + query_string)
                 search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
+                print("search results: " + str(search_results))
+                print("search resuls[0]: " +str(search_results[0]))
                 return search_results[0]
     
 
@@ -178,14 +181,14 @@ class music_cog(commands.Cog):
     async def play_next(self, ctx):
         print("play next, main")
         id = int(ctx.guild.id)
-        if not self.is_playing[id]:
+        if not self.playing[id]:
             print("play next, if 1")
             return
         if self.queue_index[id] + 1 < len(self.music_queue[id]):
             print("play next, if 2")
             print("length of the music queue: " + str(len(self.music_queue[id])))
             print("Current position in the queue: " + str(self.queue_index[id]))
-            self.is_playing[id] = True
+            self.playing[id] = True
             self.queue_index[id] += 1
 
             song = self.music_queue[id][self.queue_index[id]][0]
@@ -211,7 +214,7 @@ class music_cog(commands.Cog):
             print("play next, else")
             await ctx.send("You have reached the end of the queue!")
             self.queue_index[id] += 1
-            self.is_playing[id] = False
+            self.playing[id] = False
 
 
     #kicks off the music playing process. Very similar to the play next function in most of it's design.
@@ -221,8 +224,8 @@ class music_cog(commands.Cog):
         id = int(ctx.guild.id)
         if self.queue_index[id] < len(self.music_queue[id]):
             print("play music, 1")
-            self.is_playing[id] = True
-            self.is_paused[id] = False
+            self.playing[id] = True
+            self.paused[id] = False
 
             await self.join_vc(ctx, self.music_queue[id][self.queue_index[id]][1])
 
@@ -250,7 +253,7 @@ class music_cog(commands.Cog):
             print("play music, 2")
             await ctx.send("There are no more songs in the queue")
             self.queue_index[id] += 1
-            self.is_playing[id] = False
+            self.playing[id] = False
 
 
 
@@ -275,14 +278,14 @@ class music_cog(commands.Cog):
                     print("Play, 2")
                     await ctx.send("there are no more songs in queue.")
                     return
-                elif self.is_playing[id] == False:
+                elif self.playing[id] == False:
                     if self.music_queue[id] == None or self.vc[id] == None:
                         print("Play, 3")
                         await self.play_music(ctx)
                     else:
                         print("Play, 4")
-                        self.is_paused[id] = False
-                        self.is_playing[id] = True
+                        self.paused[id] = False
+                        self.playing[id] = True
                         self.vc[id].resume()
                 else:
                     print("Play, 5")
@@ -303,11 +306,11 @@ class music_cog(commands.Cog):
                     self.music_queue[id].append([song, user_channel])
                     print(self.music_queue[id])
 
-                    if not self.is_playing[id] and self.is_paused[id]:
+                    if not self.playing[id] and self.paused[id]:
                         print("Play, 9")
                         self.queue_index[id] += 1
                         await self.play_music(ctx)
-                    elif not self.is_playing[id]:
+                    elif not self.playing[id]:
                         print("Play, 10")
                         await self.play_music(ctx)
                     else:
@@ -377,10 +380,10 @@ class music_cog(commands.Cog):
             try:
                 if not self.vc[id]:
                     await ctx.send("What do you want me to pause? There's nothing playing, idiot.")
-                elif self.is_playing[id]:
+                elif self.playing[id]:
                     await ctx.send("Audio paused!")
-                    self.is_playing[id] = False
-                    self.is_paused[id] = True
+                    self.playing[id] = False
+                    self.paused[id] = True
                     self.vc[id].pause()
             except Exception as e:
                 print (e)
@@ -469,7 +472,7 @@ class music_cog(commands.Cog):
                 return_value += f"{return_index} - [{self.music_queue[id][i][0]['title']}]({self.music_queue[id][i][0]['link']})\n"
 
                 if return_value == "":
-                    await ctx.send("There are no songs in the queue!")
+                    await ctx.send("There are no songs in the queue")
                     return
                 
             queue = discord.Embed(
@@ -491,15 +494,18 @@ class music_cog(commands.Cog):
     async def clear(self, ctx):
         print("Clear command called!")
         id = int(ctx.guild.id)
-        try:
-            if len(self.music_queue[id]) > self.queue_index[id] +1:
-                await ctx.send("The queue has been cleared!")
-                self.music_queue[id] = self.music_queue[id][:self.queue_index[id] + 1]
-            else: 
-                len(self.music_queue[id]) == self.queue_index[id]
-                await ctx.send("The queue was already empty!")
-        except Exception as e:
-            print(e)
+        if ctx.author.voice.channel != self.vc[id]:
+            await ctx.send("You must be in the same vc as the bot to issue commands")
+        else:
+            try:
+                if len(self.music_queue[id]) > self.queue_index[id] +1:
+                    await ctx.send("The queue has been cleared!")
+                    self.music_queue[id] = self.music_queue[id][:self.queue_index[id] + 1]
+                else: 
+                    len(self.music_queue[id]) == self.queue_index[id]
+                    await ctx.send("You were already at the end of the queue")
+            except Exception as e:
+                print(e)
 
 
 
@@ -511,16 +517,19 @@ class music_cog(commands.Cog):
     async def remove(self, ctx):
         print("Remove command called!")
         id = int(ctx.guild.id)
-        try:
-            if self.music_queue[id] != [] and (len(self.music_queue[id]) - self.queue_index[id]) >= 2:
-                song = self.music_queue[id][-1][0]
-                message = await self.gen_embed(ctx, song, 3)
-                await ctx.send(embed = message)
-                self.music_queue[id] = self.music_queue[id][:-1]
-            else:
-                await ctx.send("There are no songs to be removed from the queue")
-        except Exception as e:
-            print(e)
+        if ctx.author.voice.channel != self.vc[id]:
+            await ctx.send("You must be in the same vc as the bot to issue commands")
+        else:
+            try:
+                if self.music_queue[id] != [] and (len(self.music_queue[id]) - self.queue_index[id]) >= 2:
+                    song = self.music_queue[id][-1][0]
+                    message = await self.gen_embed(ctx, song, 3)
+                    await ctx.send(embed = message)
+                    self.music_queue[id] = self.music_queue[id][:-1]
+                else:
+                    await ctx.send("There are no songs to be removed from the queue")
+            except Exception as e:
+                print(e)
 
 
 
@@ -532,13 +541,16 @@ class music_cog(commands.Cog):
     async def leave(self, ctx):
         print("Leave command called!")
         id = int(ctx.guild.id)
-        try:
-            self.is_playing[id] = self.is_paused[id] = False
-            self.music_queue[id] = []
-            self.queue_index[id] = 0
-            if self.vc[id] != None:
-                await ctx.send("Bot has left the voice channel.")
-                await self.vc[id].disconnect()
-                self.vc[id] = None
-        except Exception as e:
-            print(e)
+        if ctx.author.voice.channel != self.vc[id]:
+            await ctx.send("You must be in the same vc as the bot to issue commands")
+        else:
+            try:
+                self.playing[id] = self.paused[id] = False
+                self.music_queue[id] = []
+                self.queue_index[id] = 0
+                if self.vc[id] != None:
+                    await ctx.send("Bot has left the voice channel.")
+                    await self.vc[id].disconnect()
+                    self.vc[id] = None
+            except Exception as e:
+                print(e)
