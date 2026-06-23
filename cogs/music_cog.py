@@ -270,7 +270,7 @@ class music_cog(commands.Cog):
         search = " ".join(args)
         id = int(ctx.guild.id)
         user_channel = ctx.author.voice.channel
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (user_channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be connected to the same vc as the bot to issue commands.")
         else:
             if not args:
@@ -337,7 +337,7 @@ class music_cog(commands.Cog):
             search = " ".join(args)
             id = int(ctx.guild.id)
             user_channel = ctx.author.voice.channel
-            if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+            if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
                 await ctx.send("You must be connected to the bots vc to send it commands.")
             else:
                 if not args:
@@ -376,7 +376,7 @@ class music_cog(commands.Cog):
     async def pause(self, ctx):
         print("Pause command called!")
         id = int(ctx.guild.id)
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be in the same vc as the bot to send commands.")
         else:
             try:
@@ -400,7 +400,7 @@ class music_cog(commands.Cog):
     async def skip(self,ctx):
         id = int(ctx.guild.id)
         print("Skip command called!")
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be in the same vc as the bot to issue commands.")
         else:
             try:
@@ -423,7 +423,7 @@ class music_cog(commands.Cog):
     async def previous(self, ctx):
         print("Previous command called!")
         id = int(ctx.guild.id)
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be connected to the same vc as the bot to issue commands")
         else:
             try:
@@ -496,7 +496,7 @@ class music_cog(commands.Cog):
     async def clear(self, ctx):
         print("Clear command called!")
         id = int(ctx.guild.id)
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be in the same vc as the bot to issue commands")
         else:
             try:
@@ -519,7 +519,7 @@ class music_cog(commands.Cog):
     async def remove(self, ctx):
         print("Remove command called!")
         id = int(ctx.guild.id)
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be in the same vc as the bot to issue commands")
         else:
             try:
@@ -543,7 +543,7 @@ class music_cog(commands.Cog):
     async def leave(self, ctx):
         print("Leave command called!")
         id = int(ctx.guild.id)
-        if (ctx.author.voice.channel != self.vc[id]) and self.vc[id] != None:
+        if (ctx.author.voice.channel != self.vc[id].channel) and self.vc[id] != None:
             await ctx.send("You must be in the same vc as the bot to issue commands")
         else:
             try:
