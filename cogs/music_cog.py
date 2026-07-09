@@ -480,7 +480,7 @@ class music_cog(commands.Cog):
                     return_index = 5
                 elif return_index == 5:
                     return_index = 6
-                return_value += f"{return_index} - [{self.music_queue[id][i][0][\'title\']}]({self.music_queue[id][i][0][\'link\']})\n"
+                return_value += f"{return_index} - [{self.music_queue[id][i][0]['title']}]({self.music_queue[id][i][0]['link']})\n"
 
                 if return_value == "":
                     await ctx.send("There are no songs in the queue")
