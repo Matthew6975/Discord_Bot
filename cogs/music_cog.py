@@ -4,8 +4,6 @@ from discord.ext.commands import has_permissions
 import asyncio
 from asyncio import run_coroutine_threadsafe
 from yt_dlp import YoutubeDL
-from urllib import parse, request
-import re
 
 async def setup(bot):
     await bot.add_cog(music_cog(bot))
@@ -55,7 +53,7 @@ class music_cog(commands.Cog):
         id = int(member.guild.id)
         if member.id != self.bot.user.id and before.channel != None and after.channel != before.channel:
             remaining_channel_members = before.channel.members
-            if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id].is_connected():
+            if len(remaining_channel_members) == 1 and remaining_channel_members[0].id == self.bot.user.id and self.vc[id] is not None and self.vc[id].is_connected():
                 await self.vc[id].disconnect()
                 self.is_playing[id] = self.is_paused[id] = False
                 self.music_queue[id] = []
@@ -141,27 +139,32 @@ class music_cog(commands.Cog):
     #this function searches for a YouTube link based on the search criteria provided by the user who submits the call
     #If they provide a link, it sends that link off to have the audio extracted.
     async def search_YT(self, search):
-            if "https://www.youtube.com/watch?v=" in search:
+            if "https://www.youtube.com/watch?v=" in search or "https://youtu.be/" in search:
                 print("search_YT, if")
                 return search
             else:
                 print("search_YT, else")
-                query_string = parse.urlencode({"search_query": search})
-                htm_content = request.urlopen('https://www.youtube.com/results?' + query_string)
-                search_results = re.findall(r'/watch\?v=(.{11})', htm_content.read().decode())
-                return search_results[0]
+                loop = asyncio.get_event_loop()
+                with YoutubeDL(self.yt_dl_options) as ydl:
+                    info = await loop.run_in_executor(
+                        None, lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
+                    )
+                    return info['entries'][0]['webpage_url']
     
 
     #extracts audio, thumbnail, title, from the YouTube link provided by the Search_YT function.
     #Note: the search_YT function returns to the play function, which then uses this function to extract the audio.
     async def extract_YT(self, url):
+        loop = asyncio.get_event_loop()
         with YoutubeDL(self.yt_dl_options) as ydl:
             try:
-                info = ydl.extract_info(url, download = False)
+                info = await loop.run_in_executor(
+                    None, lambda: ydl.extract_info(url, download=False)
+                )
             except:
                 return False
         return {
-            "link": "https://www.youtube.com/watch?v=" + url,
+            "link": info.get("webpage_url", ""),
             "thumbnail": info["thumbnails"][-1]["url"],
             "source": info["url"],
             "title": info["title"]
@@ -302,7 +305,7 @@ class music_cog(commands.Cog):
                     await ctx.send("Could not download song. Incorrect format, try again with some different keywords.")
                 else:
                     print("Play, 8")
-                    self.music_queue[id].append([song, user_channel])
+                    self.music_queue[id].append([song, ctx.author.voice.channel])
                     print(self.music_queue[id])
 
                     if not self.is_playing[id] and self.is_paused[id]:
@@ -351,7 +354,7 @@ class music_cog(commands.Cog):
                             await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
                         else:
                             print("Add, 11")
-                            self.music_queue[id].insert(self.queue_index[id] + 1, [song, userChannel])
+                            self.music_queue[id].insert(self.queue_index[id] + 1, [song, ctx.author.voice.channel])
                             if self.searching_message[id]:
                                 message = await self.gen_embed(ctx, song, 4)
                                 await self.searching_message[id].edit(embed = message)
