@@ -4,9 +4,18 @@ from discord.ext.commands import has_permissions
 import asyncio
 from asyncio import run_coroutine_threadsafe
 from yt_dlp import YoutubeDL
+from enum import Enum
 
 async def setup(bot):
     await bot.add_cog(music_cog(bot))
+
+class EnumType(Enum):
+    NOW_PLAYING = 1
+    SONG_ADDED = 2
+    SONG_REMOVED = 3
+    SONG_NEXT = 4
+    SEARCHING = 5
+
 
 #initialize the music cog to the bot.
 class music_cog(commands.Cog): 
@@ -65,7 +74,7 @@ class music_cog(commands.Cog):
     #Generates different embeds to be sent in the chat based on the type used to call the function.
     #generally used to show what is playing/what was added to the queue.
     async def gen_embed(self, ctx, song, type):
-        if type == 5:
+        if type == EnumType.SEARCHING:
             loading_embed = discord.Embed(
                 title = "Searching for song ...",
                 description = "searching for song ... please wait.",
@@ -79,7 +88,7 @@ class music_cog(commands.Cog):
         author = ctx.author
         avatar = author.avatar
 
-        if type == 1:
+        if type == EnumType.NOW_PLAYING:
             now_playing = discord.Embed(
                 title = "Now Playing",
                 description = f"[{title}]({link})",
@@ -89,7 +98,7 @@ class music_cog(commands.Cog):
             now_playing.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
             return now_playing
 
-        if type == 2:
+        if type == EnumType.SONG_ADDED:
             song_added = discord.Embed(
                 title = "Song Added to Queue!",
                 description = f"[{title}]({link})",
@@ -99,7 +108,7 @@ class music_cog(commands.Cog):
             song_added.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
             return song_added
         
-        if type == 3:
+        if type == EnumType.SONG_REMOVED:
             song_removed = discord.Embed(
                 title = "Song Removed From Queue!",
                 description = f"[{title}]({link})",
@@ -109,7 +118,7 @@ class music_cog(commands.Cog):
             song_removed.set_footer(text = f"Song Removed by: {str(author)}", icon_url = avatar)
             return song_removed
 
-        if type == 4:
+        if type == EnumType.SONG_NEXT:
             song_next = discord.Embed(
                 title = "Song Inserted Next in Queue!",
                 description = f"[{title}]({link})",
@@ -171,7 +180,7 @@ class music_cog(commands.Cog):
         }
     
 
-    async def play_next_callback(self, ctx, e):
+    def play_next_callback(self, ctx, e):
             if e:
                 print(f"[Playback Error] Player error: {e}")
             asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
@@ -203,7 +212,7 @@ class music_cog(commands.Cog):
                     print(e)
 
             #you'll see this code a lot. This is the block that calls gen_embed to generate a embed to send to the chat.
-            playing_embed = await self.gen_embed(ctx, song, 1) #final argument decides the type of embed to generate. 1 generates "now playing".
+            playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
             self.now_playing_message[id] = await ctx.send(embed = playing_embed)
 
             self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
@@ -239,11 +248,11 @@ class music_cog(commands.Cog):
                     print(e)
 
             if self.searching_message[id]:
-                playing_embed = await self.gen_embed(ctx, song, 1)
+                playing_embed = await self.gen_embed(ctx, song, EnumType.SEARCHING)
                 self.now_playing_message[id] = await self.searching_message[id].edit(embed = playing_embed)
                 self.searching_message[id] = None
             else:
-                playing_embed = await self.gen_embed(ctx, song, 1)
+                playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
                 self.now_playing_message[id] = await ctx.send(embed = playing_embed)
                 
             #self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
@@ -269,10 +278,13 @@ class music_cog(commands.Cog):
         print("Play command called!")
         search = " ".join(args)
         id = int(ctx.guild.id)
-        if ctx.author.voice.channel != self.vc[id] and self.vc[id] != None:
+
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
             await ctx.send("You must be connected to the same vc as the bot to send commands.")
-        elif ctx.author.voice.channel == None:
-            await ctx.send("You must be connected to a voice channel.")
+            return
         else:
             if not args:
                 print("Play, 1")
@@ -293,7 +305,7 @@ class music_cog(commands.Cog):
                     print("Play, 5")
                     return
             elif args:
-                loading_embed = await self.gen_embed(ctx, None, 5)
+                loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
                 self.searching_message[id] = await ctx.send(embed = loading_embed)
                 print("Play, 6")
                 search_results = await self.search_YT(search)
@@ -318,11 +330,11 @@ class music_cog(commands.Cog):
                     else:
                         print("Play, 11")
                         if self.searching_message[id]:
-                            message = await self.gen_embed(ctx, song, 2)
+                            message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
                             self.song_added_message = await self.searching_message[id].edit(embed = message)
                             self.searching_message[id] = None
                         else:
-                            message = await self.gen_embed(ctx, song, 2)
+                            message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
                             self.song_added_message = await ctx.send(embed = message)
 
 
@@ -337,15 +349,19 @@ class music_cog(commands.Cog):
             print("Add command called!")
             search = " ".join(args)
             id = int(ctx.guild.id)
-            if ctx.author.voice.channel != self.vc[id]:
-                await ctx.send("You must be connected to the bots vc to send it commands.")
+            if ctx.author.voice == None:
+                await ctx.send("You must be connected to a voice channel to send commands.")
+                return
+            elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+                await ctx.send("You must be connected to the same vc as the bot to send commands.")
+                return
             else:
                 if not args:
                     await ctx.send("You need to provide a search term to add a song to the queue.")
                 else:
                     try:
                         print("Add, 9")
-                        loading_embed = await self.gen_embed(ctx, None, 5)
+                        loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
                         self.searching_message[id] = await ctx.send(embed = loading_embed)
                         search_results = await self.search_YT(search)
                         song = await self.extract_YT(search_results)
@@ -356,11 +372,11 @@ class music_cog(commands.Cog):
                             print("Add, 11")
                             self.music_queue[id].insert(self.queue_index[id] + 1, [song, ctx.author.voice.channel])
                             if self.searching_message[id]:
-                                message = await self.gen_embed(ctx, song, 4)
+                                message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
                                 await self.searching_message[id].edit(embed = message)
                                 self.searching_message[id] = None
                             else:
-                                message = await self.gen_embed(ctx, song, 4)
+                                message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
                                 await ctx.send(embed = message)
                     except Exception as e:
                         print("Add, 12")
@@ -376,8 +392,12 @@ class music_cog(commands.Cog):
     async def pause(self, ctx):
         print("Pause command called!")
         id = int(ctx.guild.id)
-        if ctx.author.voice.channel != self.vc[id]:
-            await ctx.send("You must be in the same vc as the bot to send commands.")
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         else:
             try:
                 if not self.vc[id]:
@@ -400,8 +420,12 @@ class music_cog(commands.Cog):
     async def skip(self,ctx):
         id = int(ctx.guild.id)
         print("Skip command called!")
-        if ctx.author.voice.channel != self.vc[id]:
-            await ctx.send("You must be in the same vc as the bot to issue commands.")
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         else:
             try:
                 if self.queue_index[id] >= len(self.music_queue[id]) - 1:
@@ -423,8 +447,12 @@ class music_cog(commands.Cog):
     async def previous(self, ctx):
         print("Previous command called!")
         id = int(ctx.guild.id)
-        if ctx.author.voice.channel != self.vc[id]:
-            await ctx.send("You must be connected to the same vc as the bot to issue commands")
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         else:
             try:
                 if self.vc[id] == None:
@@ -496,12 +524,17 @@ class music_cog(commands.Cog):
     async def clear(self, ctx):
         print("Clear command called!")
         id = int(ctx.guild.id)
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         try:
             if len(self.music_queue[id]) > self.queue_index[id] +1:
                 await ctx.send("The queue has been cleared!")
                 self.music_queue[id] = self.music_queue[id][:self.queue_index[id] + 1]
             else: 
-                len(self.music_queue[id]) == self.queue_index[id]
                 await ctx.send("The queue was already empty!")
         except Exception as e:
             print(e)
@@ -516,10 +549,16 @@ class music_cog(commands.Cog):
     async def remove(self, ctx):
         print("Remove command called!")
         id = int(ctx.guild.id)
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         try:
             if self.music_queue[id] != [] and (len(self.music_queue[id]) - self.queue_index[id]) >= 2:
                 song = self.music_queue[id][-1][0]
-                message = await self.gen_embed(ctx, song, 3)
+                message = await self.gen_embed(ctx, song, EnumType.SONG_REMOVED)
                 await ctx.send(embed = message)
                 self.music_queue[id] = self.music_queue[id][:-1]
             else:
@@ -537,6 +576,12 @@ class music_cog(commands.Cog):
     async def leave(self, ctx):
         print("Leave command called!")
         id = int(ctx.guild.id)
+        if ctx.author.voice == None:
+            await ctx.send("You must be connected to a voice channel to send commands.")
+            return
+        elif self.vc[id] != None and ctx.author.voice.channel != self.vc[id].channel:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+            return
         try:
             self.is_playing[id] = self.is_paused[id] = False
             self.music_queue[id] = []
