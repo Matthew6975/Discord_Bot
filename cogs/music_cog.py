@@ -266,7 +266,9 @@ class music_cog(commands.Cog):
         print("Play command called!")
         search = " ".join(args)
         id = int(ctx.guild.id)
-        if ctx.author.voice.channel != self.vc[id]:
+        if ctx.author.voice.channel != self.vc[id] and self.vc[id] != None:
+            await ctx.send("You must be connected to the same vc as the bot to send commands.")
+        elif ctx.author.voice.channel == None:
             await ctx.send("You must be connected to a voice channel.")
         else:
             if not args:
