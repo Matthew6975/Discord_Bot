@@ -9,7 +9,7 @@ async def setup(bot):
     await bot.add_cog(music_cog(bot))
 
 #initialize the music cog to the bot.
-class music_cog(commands.Cog):
+class music_cog(commands.Cog): 
     def __init__(self, bot):
         self.bot = bot
         
@@ -44,7 +44,7 @@ class music_cog(commands.Cog):
             self.queue_index[id] = 0
             self.vc[id] = None
             self.is_paused[id] = self.is_playing[id] = False
-            self.searching_message = self.now_playing_message = None
+            self.searching_message[id] = self.now_playing_message[id] = None
             
 
     #listener that runs when a user leaves a voice channel. If the bot is the only one left in the channel, it disconnects.
@@ -198,13 +198,13 @@ class music_cog(commands.Cog):
             if self.now_playing_message.get(id):
                 print("self.now_playing_message, play_next")
                 try:
-                    await self.now_playing_message.delete()
+                    await self.now_playing_message[id].delete()
                 except Exception as e:
                     print(e)
 
             #you'll see this code a lot. This is the block that calls gen_embed to generate a embed to send to the chat.
             playing_embed = await self.gen_embed(ctx, song, 1) #final argument decides the type of embed to generate. 1 generates "now playing".
-            self.now_playing_message = await ctx.send(embed = playing_embed)
+            self.now_playing_message[id] = await ctx.send(embed = playing_embed)
 
             self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
             # self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
@@ -234,7 +234,7 @@ class music_cog(commands.Cog):
             if self.now_playing_message.get(id):
                 print("self.now_playing_message, play_next")
                 try:
-                    await self.now_playing_message.delete()
+                    await self.now_playing_message[id].delete()
                 except Exception as e:
                     print(e)
 
@@ -244,7 +244,7 @@ class music_cog(commands.Cog):
                 self.searching_message[id] = None
             else:
                 playing_embed = await self.gen_embed(ctx, song, 1)
-                self.now_playing_message = await ctx.send(embed = playing_embed)
+                self.now_playing_message[id] = await ctx.send(embed = playing_embed)
                 
             #self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
             self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
