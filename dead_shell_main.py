@@ -3,6 +3,14 @@ from discord.ext import commands
 import asyncio
 import os
 from dotenv import load_dotenv
+import logging
+
+custom_format = "[%(asctime)s] [%(levelname)s] %(name)s.%(funcName)s:%(lineno)d | %(message)s"
+
+discord.setup_logging(
+    level=logging.DEBUG,
+    format=custom_format,
+)
 
 load_dotenv()
 dead_shell = os.getenv("dead_shell")
