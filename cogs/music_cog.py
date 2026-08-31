@@ -74,14 +74,14 @@ class music_cog(commands.Cog):
 #-----------------------------------NON-CALLABLE FUNCTIONS-----------------------------------------------------
     #Generates different embeds to be sent in the chat based on the type used to call the function.
     #generally used to show what is playing/what was added to the queue.
-    async def gen_embed(self, ctx, song, type):       
-        title = song["title"]
-        link = song["link"]
-        thumbnail = song["thumbnail"]
+    async def gen_embed(self, ctx, song, embed_type):       
+        title = song.get("title", "")
+        link = song.get("link", "")
+        thumbnail = song.get("thumbnail", "")
         author = ctx.author
         avatar = author.avatar
 
-        if type == EnumType.NOW_PLAYING:
+        if embed_type == EnumType.NOW_PLAYING:
             now_playing = discord.Embed(
                 title = "Now Playing",
                 description = f"[{title}]({link})",
@@ -91,7 +91,7 @@ class music_cog(commands.Cog):
             now_playing.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
             return now_playing
 
-        if type == EnumType.SONG_ADDED:
+        if embed_type == EnumType.SONG_ADDED:
             song_added = discord.Embed(
                 title = "Song Added to Queue!",
                 description = f"[{title}]({link})",
@@ -101,7 +101,7 @@ class music_cog(commands.Cog):
             song_added.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
             return song_added
         
-        if type == EnumType.SONG_REMOVED:
+        if embed_type == EnumType.SONG_REMOVED:
             song_removed = discord.Embed(
                 title = "Song Removed From Queue!",
                 description = f"[{title}]({link})",
@@ -111,7 +111,7 @@ class music_cog(commands.Cog):
             song_removed.set_footer(text = f"Song Removed by: {str(author)}", icon_url = avatar)
             return song_removed
 
-        if type == EnumType.SONG_NEXT:
+        if embed_type == EnumType.SONG_NEXT:
             song_next = discord.Embed(
                 title = "Song Inserted Next in Queue!",
                 description = f"[{title}]({link})",
@@ -121,7 +121,7 @@ class music_cog(commands.Cog):
             song_next.set_footer(text = f"Song Inserted by: {str(author)}", icon_url = avatar)
             return song_next
         
-        if type == EnumType.SEARCHING:
+        if embed_type == EnumType.SEARCHING:
             loading_embed = discord.Embed(
                 title = "Searching for song ...",
                 description = "searching for song ... please wait.",
