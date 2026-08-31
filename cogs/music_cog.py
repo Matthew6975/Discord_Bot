@@ -79,7 +79,7 @@ class music_cog(commands.Cog):
         title = song.get("title", "")
         link = song.get("link", "")
         thumbnail = song.get("thumbnail", "")
-        author = ctx.author
+        author = ctx.author.display_name
         avatar = author.avatar
 
         if embed_type == EnumType.NOW_PLAYING:
