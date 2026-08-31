@@ -1,10 +1,11 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands import has_permissions
 import asyncio
-from asyncio import run_coroutine_threadsafe
 from yt_dlp import YoutubeDL
 from enum import Enum
+import logging
+
+log = logging.getLogger(__name__)
 
 async def setup(bot):
     await bot.add_cog(music_cog(bot))
@@ -47,7 +48,7 @@ class music_cog(commands.Cog):
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
     @commands.Cog.listener()
     async def on_ready(self):
-        print("music_cog is running!")
+        log.info(f"{self.bot.user} has connected to Discord!")
         for guild in self.bot.guilds:
             id = int(guild.id)
             self.music_queue[id] = []
@@ -73,15 +74,7 @@ class music_cog(commands.Cog):
 #-----------------------------------NON-CALLABLE FUNCTIONS-----------------------------------------------------
     #Generates different embeds to be sent in the chat based on the type used to call the function.
     #generally used to show what is playing/what was added to the queue.
-    async def gen_embed(self, ctx, song, type):
-        if type == EnumType.SEARCHING:
-            loading_embed = discord.Embed(
-                title = "Searching for song ...",
-                description = "searching for song ... please wait.",
-                color = self.embed_blue
-            )
-            return loading_embed
-        
+    async def gen_embed(self, ctx, song, type):       
         title = song["title"]
         link = song["link"]
         thumbnail = song["thumbnail"]
@@ -127,12 +120,20 @@ class music_cog(commands.Cog):
             song_next.set_thumbnail(url=thumbnail)
             song_next.set_footer(text = f"Song Inserted by: {str(author)}", icon_url = avatar)
             return song_next
+        
+        if type == EnumType.SEARCHING:
+            loading_embed = discord.Embed(
+                title = "Searching for song ...",
+                description = "searching for song ... please wait.",
+                color = self.embed_blue
+            )
+            return loading_embed
 
 
     #Causes the bot to join the VC of the user that called the command. 
     #Has some error handling to make sure the bot doesn't try to join a channel that doesn't exist or is empty.
     async def join_vc(self, ctx, channel):
-        print("join_vc called")
+        log.info("join_vc called")
         id = int(ctx.guild.id)
 
         if self.vc[id] == None or not self.vc[id].is_connected():
@@ -149,10 +150,10 @@ class music_cog(commands.Cog):
     #If they provide a link, it sends that link off to have the audio extracted.
     async def search_YT(self, search):
             if "https://www.youtube.com/watch?v=" in search or "https://youtu.be/" in search:
-                print("search_YT, if")
+                log.info("search_YT, if")
                 return search
             else:
-                print("search_YT, else")
+                log.info("search_YT, else")
                 loop = asyncio.get_event_loop()
                 with YoutubeDL(self.yt_dl_options) as ydl:
                     info = await loop.run_in_executor(
@@ -182,21 +183,22 @@ class music_cog(commands.Cog):
 
     def play_next_callback(self, ctx, e):
             if e:
-                print(f"[Playback Error] Player error: {e}")
+                log.error(f"Player error: {e}")
             asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
+
     
     #moves the bot to the next song in the queue if the current song ends.
     #calls itself towards the bottom and incriments the queue to loop and continue playing the next song automatically.
     async def play_next(self, ctx):
-        print("play next, main")
+        log.info("play next, main")
         id = int(ctx.guild.id)
         if not self.is_playing[id]:
-            print("play next, if 1")
+            log.debug("play next, if 1")
             return
         if self.queue_index[id] + 1 < len(self.music_queue[id]):
-            print("play next, if 2")
-            print("length of the music queue: " + str(len(self.music_queue[id])))
-            print("Current position in the queue: " + str(self.queue_index[id]))
+            log.debug("play next, if 2")
+            log.debug("length of the music queue: " + str(len(self.music_queue[id])))
+            log.debug("Current position in the queue: " + str(self.queue_index[id]))
             self.is_playing[id] = True
             self.queue_index[id] += 1
 
@@ -205,11 +207,11 @@ class music_cog(commands.Cog):
             #if a "now playing" message exists, it deletes it and then replaces it with a new, updated one later in the function.
             #has some built-in error handling.
             if self.now_playing_message.get(id):
-                print("self.now_playing_message, play_next")
+                log.debug("self.now_playing_message, play_next")
                 try:
                     await self.now_playing_message[id].delete()
                 except Exception as e:
-                    print(e)
+                    log.error(f"Failed to delete now playing message: {e}")
 
             #you'll see this code a lot. This is the block that calls gen_embed to generate a embed to send to the chat.
             playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
@@ -220,7 +222,7 @@ class music_cog(commands.Cog):
         
         #end of queue handling. Sends a message letting the user(s) know that the queue is empty.
         else:
-            print("play next, else")
+            log.debug("play next, else")
             await ctx.send("You have reached the end of the queue!")
             self.queue_index[id] += 1
             self.is_playing[id] = False
@@ -229,10 +231,10 @@ class music_cog(commands.Cog):
     #kicks off the music playing process. Very similar to the play next function in most of it's design.
     #upon reviewing this code, I think I could probably combine the two functions into one to save on code. Will look into this.
     async def play_music(self, ctx):
-        print("play music called")
+        log.info("play music called")
         id = int(ctx.guild.id)
         if self.queue_index[id] < len(self.music_queue[id]):
-            print("play music, 1")
+            log.debug("play music, 1")
             self.is_playing[id] = True
             self.is_paused[id] = False
 
@@ -241,11 +243,11 @@ class music_cog(commands.Cog):
             song = self.music_queue[id][self.queue_index[id]][0]
 
             if self.now_playing_message.get(id):
-                print("self.now_playing_message, play_next")
+                log.debug("self.now_playing_message, play_next")
                 try:
                     await self.now_playing_message[id].delete()
                 except Exception as e:
-                    print(e)
+                    log.error(f"Failed to delete now playing message: {e}")
 
             if self.searching_message[id]:
                 playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
@@ -259,7 +261,7 @@ class music_cog(commands.Cog):
             self.vc[id].play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
             
         else:
-            print("play music, 2")
+            log.debug("play music, 2")
             await ctx.send("There are no more songs in the queue")
             self.queue_index[id] += 1
             self.is_playing[id] = False
@@ -275,7 +277,7 @@ class music_cog(commands.Cog):
         )
     
     async def play(self, ctx, *args):
-        print("Play command called!")
+        log.info("Play command called!")
         search = " ".join(args)
         id = int(ctx.guild.id)
 
@@ -287,48 +289,48 @@ class music_cog(commands.Cog):
             return
         else:
             if not args:
-                print("Play, 1")
+                log.debug("Play, 1")
                 if len(self.music_queue[id]) == 0:
-                    print("Play, 2")
+                    log.debug("Play, 2")
                     await ctx.send("there are no more songs in queue.")
                     return
                 elif self.is_playing[id] == False:
                     if self.music_queue[id] == None or self.vc[id] == None:
-                        print("Play, 3")
+                        log.debug("Play, 3")
                         await self.play_music(ctx)
                     else:
-                        print("Play, 4")
+                        log.debug("Play, 4")
                         self.is_paused[id] = False
                         self.is_playing[id] = True
                         self.vc[id].resume()
                 else:
-                    print("Play, 5")
+                    log.debug("Play, 5")
                     return
             elif args:
                 loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
                 self.searching_message[id] = await ctx.send(embed = loading_embed)
-                print("Play, 6")
+                log.debug("Play, 6")
                 search_results = await self.search_YT(search)
-                print(search_results)
+                log.debug(search_results)
                 song = await self.extract_YT(search_results)
                 if type(song) == type(True):
-                    print("Play, 7")
-                    print(song)
+                    log.debug("Play, 7")
+                    log.debug(song)
                     await ctx.send("Could not download song. Incorrect format, try again with some different keywords.")
                 else:
-                    print("Play, 8")
+                    log.debug("Play, 8")
                     self.music_queue[id].append([song, ctx.author.voice.channel])
-                    print(self.music_queue[id])
+                    log.debug(self.music_queue[id])
 
                     if not self.is_playing[id] and self.is_paused[id]:
-                        print("Play, 9")
+                        log.debug("Play, 9")
                         self.queue_index[id] += 1
                         await self.play_music(ctx)
                     elif not self.is_playing[id]:
-                        print("Play, 10")
+                        log.debug("Play, 10")
                         await self.play_music(ctx)
                     else:
-                        print("Play, 11")
+                        log.debug("Play, 11")
                         if self.searching_message[id]:
                             message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
                             self.song_added_message[id] = await self.searching_message[id].edit(embed = message)
@@ -346,7 +348,7 @@ class music_cog(commands.Cog):
         help = ""
         )
     async def add(self, ctx, *args):
-            print("Add command called!")
+            log.info("Add command called!")
             search = " ".join(args)
             id = int(ctx.guild.id)
             if ctx.author.voice == None:
@@ -360,16 +362,16 @@ class music_cog(commands.Cog):
                     await ctx.send("You need to provide a search term to add a song to the queue.")
                 else:
                     try:
-                        print("Add, 9")
+                        log.debug("Add, 9")
                         loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
                         self.searching_message[id] = await ctx.send(embed = loading_embed)
                         search_results = await self.search_YT(search)
                         song = await self.extract_YT(search_results)
                         if type(song) == type(True):
-                            print("Add, 10")
+                            log.debug("Add, 10")
                             await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
                         else:
-                            print("Add, 11")
+                            log.debug("Add, 11")
                             self.music_queue[id].insert(self.queue_index[id] + 1, [song, ctx.author.voice.channel])
                             if self.searching_message[id]:
                                 message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
@@ -379,8 +381,8 @@ class music_cog(commands.Cog):
                                 message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
                                 await ctx.send(embed = message)
                     except Exception as e:
-                        print("Add, 12")
-                        print(e)
+                        log.error("Add, 12")
+                        log.exception(f"Add, 12: {e}")
 
 
 
@@ -390,7 +392,7 @@ class music_cog(commands.Cog):
         help = ""
         )
     async def pause(self, ctx):
-        print("Pause command called!")
+        log.info("Pause command called!")
         id = int(ctx.guild.id)
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
@@ -408,7 +410,7 @@ class music_cog(commands.Cog):
                     self.is_paused[id] = True
                     self.vc[id].pause()
             except Exception as e:
-                print (e)
+                log.exception(f"Pause, 1: {e}")
 
 
 
@@ -419,7 +421,7 @@ class music_cog(commands.Cog):
     )
     async def skip(self,ctx):
         id = int(ctx.guild.id)
-        print("Skip command called!")
+        log.info("Skip command called!")
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
             return
@@ -435,7 +437,7 @@ class music_cog(commands.Cog):
                     self.queue_index[id] += 1
                     await self.play_music(ctx)
             except Exception as e:
-                print(e)
+                log.exception(f"Skip: {e}")
 
 
 
@@ -445,7 +447,7 @@ class music_cog(commands.Cog):
         help = ""
     )
     async def previous(self, ctx):
-        print("Previous command called!")
+        log.info("Previous command called!")
         id = int(ctx.guild.id)
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
@@ -464,7 +466,7 @@ class music_cog(commands.Cog):
                     self.queue_index[id] -= 1
                     await self.play_music(ctx)
             except Exception as e:
-                print(e)
+                log.exception(f"Previous: {e}")
 
 
 
@@ -474,7 +476,7 @@ class music_cog(commands.Cog):
         help = ""
     )
     async def queue(self, ctx):
-        print("Queue command called!")
+        log.info("Queue command called!")
         id = int(ctx.guild.id)
         try:
             return_value = ""
@@ -512,7 +514,7 @@ class music_cog(commands.Cog):
             )
             await ctx.send(embed = queue)
         except Exception as e:
-            print(e)
+            log.exception(f"Queue: {e}")
 
 
 
@@ -522,7 +524,7 @@ class music_cog(commands.Cog):
         help = ""
     )
     async def clear(self, ctx):
-        print("Clear command called!")
+        log.info("Clear command called!")
         id = int(ctx.guild.id)
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
@@ -537,7 +539,7 @@ class music_cog(commands.Cog):
             else: 
                 await ctx.send("The queue was already empty!")
         except Exception as e:
-            print(e)
+            log.exception(f"Clear: {e}")
 
 
 
@@ -547,7 +549,7 @@ class music_cog(commands.Cog):
             help = ""
             )
     async def remove(self, ctx):
-        print("Remove command called!")
+        log.info("Remove command called!")
         id = int(ctx.guild.id)
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
@@ -564,7 +566,7 @@ class music_cog(commands.Cog):
             else:
                 await ctx.send("There are no songs to be removed from the queue")
         except Exception as e:
-            print(e)
+            log.exception(f"Remove: {e}")
 
 
 
@@ -574,7 +576,7 @@ class music_cog(commands.Cog):
         help = ""
     )
     async def leave(self, ctx):
-        print("Leave command called!")
+        log.info("Leave command called!")
         id = int(ctx.guild.id)
         if ctx.author.voice == None:
             await ctx.send("You must be connected to a voice channel to send commands.")
@@ -591,4 +593,4 @@ class music_cog(commands.Cog):
                 await self.vc[id].disconnect()
                 self.vc[id] = None
         except Exception as e:
-            print(e)
+            log.exception(f"Leave: {e}")
