@@ -9,7 +9,7 @@ custom_format = "[%(asctime)s] [%(levelname)s] %(name)s.%(funcName)s:%(lineno)d 
 
 discord.utils.setup_logging(
     level=logging.DEBUG,
-    format=custom_format,
+    formatter=logging.Formatter(fmt=custom_format),
 )
 
 load_dotenv()
