@@ -10,7 +10,11 @@ custom_format = "[%(asctime)s] [%(levelname)s] %(name)s.%(funcName)s:%(lineno)d 
 discord.utils.setup_logging(
     level=logging.DEBUG,
     formatter=logging.Formatter(fmt=custom_format),
+    root=True
 )
+#these lines set the logging level for discord and discord.http to INFO and WARNING respectively, which will ignore the spam of DEBUG messages in the log from discords backend.
+#This should let me see my custom logs more easily.
+logging.getLogger("discord.http").setLevel(logging.WARNING)
 
 load_dotenv()
 dead_shell = os.getenv("dead_shell")
