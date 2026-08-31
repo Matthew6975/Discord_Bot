@@ -80,7 +80,7 @@ class music_cog(commands.Cog):
         link = song.get("link", "")
         thumbnail = song.get("thumbnail", "")
         author = ctx.author.display_name
-        avatar = ctx.author.avatar_url
+        avatar = ctx.author.avatar
 
         if embed_type == EnumType.NOW_PLAYING:
             now_playing = discord.Embed(
