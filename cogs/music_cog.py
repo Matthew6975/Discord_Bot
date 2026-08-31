@@ -74,7 +74,8 @@ class music_cog(commands.Cog):
 #-----------------------------------NON-CALLABLE FUNCTIONS-----------------------------------------------------
     #Generates different embeds to be sent in the chat based on the type used to call the function.
     #generally used to show what is playing/what was added to the queue.
-    async def gen_embed(self, ctx, song, embed_type):       
+    async def gen_embed(self, ctx, song, embed_type):
+        song = song or {}
         title = song.get("title", "")
         link = song.get("link", "")
         thumbnail = song.get("thumbnail", "")
