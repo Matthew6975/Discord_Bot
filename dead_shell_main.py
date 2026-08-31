@@ -7,7 +7,7 @@ import logging
 
 custom_format = "[%(asctime)s] [%(levelname)s] %(name)s.%(funcName)s:%(lineno)d | %(message)s"
 
-discord.setup_logging(
+discord.utils.setup_logging(
     level=logging.DEBUG,
     format=custom_format,
 )
