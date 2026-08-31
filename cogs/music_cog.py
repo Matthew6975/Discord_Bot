@@ -38,10 +38,11 @@ class music_cog(commands.Cog):
         self.vc = {}
         self.searching_message = {}
         self.now_playing_message = {}
+        self.song_added_message = {}
 
         #options/settings for YoutubeDL and ffmpeg.
         self.yt_dl_options = {"format": "bestaudio/best"}
-        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
+        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.30"'}
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
     @commands.Cog.listener()
@@ -51,10 +52,9 @@ class music_cog(commands.Cog):
             id = int(guild.id)
             self.music_queue[id] = []
             self.queue_index[id] = 0
-            self.vc[id] = None
             self.is_paused[id] = self.is_playing[id] = False
-            self.searching_message[id] = self.now_playing_message[id] = None
-            
+            self.searching_message[id] = self.now_playing_message[id] = self.song_added_message[id] = self.vc[id] = None
+    
 
     #listener that runs when a user leaves a voice channel. If the bot is the only one left in the channel, it disconnects.
     @commands.Cog.listener()
@@ -67,7 +67,7 @@ class music_cog(commands.Cog):
                 self.is_playing[id] = self.is_paused[id] = False
                 self.music_queue[id] = []
                 self.queue_index[id] = 0
-                self.vc[id] = None
+                self.searching_message[id] = self.now_playing_message[id] = self.song_added_message[id] = self.vc[id] = None
 
 
 #-----------------------------------NON-CALLABLE FUNCTIONS-----------------------------------------------------
@@ -248,7 +248,7 @@ class music_cog(commands.Cog):
                     print(e)
 
             if self.searching_message[id]:
-                playing_embed = await self.gen_embed(ctx, song, EnumType.SEARCHING)
+                playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
                 self.now_playing_message[id] = await self.searching_message[id].edit(embed = playing_embed)
                 self.searching_message[id] = None
             else:
@@ -331,11 +331,11 @@ class music_cog(commands.Cog):
                         print("Play, 11")
                         if self.searching_message[id]:
                             message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
-                            self.song_added_message = await self.searching_message[id].edit(embed = message)
+                            self.song_added_message[id] = await self.searching_message[id].edit(embed = message)
                             self.searching_message[id] = None
                         else:
                             message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
-                            self.song_added_message = await ctx.send(embed = message)
+                            self.song_added_message[id] = await ctx.send(embed = message)
 
 
                 
