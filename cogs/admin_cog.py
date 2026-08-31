@@ -21,17 +21,16 @@ class admin_cog(commands.Cog):
     async def reload(self, ctx):
         await ctx.send("Reloading bot...")
         id = int(ctx.guild.id)
-        if self.vc.get(id) != None and self.vc[id].is_connected():
+        if self.vc.get(id) != None or self.vc[id].is_connected():
             await self.vc[id].disconnect()
-        else:
-             await ctx.send("Bot was not connected to a voice channel")
 
         self.is_playing[id] = False
         self.is_paused[id] = False
         self.music_queue[id] = []
         self.queue_index[id] = 0
         self.vc[id] = None
-        self.searching_message = None
-        self.now_playing_message = None
+        self.searching_message[id] = None
+        self.now_playing_message[id] = None
+        self.song_added_message[id] = None
 
         await ctx.send("Bot state safely reloaded")
