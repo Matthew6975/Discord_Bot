@@ -33,6 +33,16 @@ class EnumType(Enum):
     SONG_NEXT = 4
     SEARCHING = 5
 
+async def ensure_voice(ctx):
+    state = ctx.bot.cogs['music_cog'].get_server_state(int(ctx.guild.id))
+    if ctx.author.voice is None:
+        await ctx.send("You must be connected to a voice channel to send commands.")
+        raise commands.CommandError("Author not in voice channel.")
+    if state.vc is not None and ctx.author.voice.channel != state.vc.channel:
+        await ctx.send("You must be connected to the same VC as the bot to send commands.")
+        raise commands.CommandError("Author in different voice channel.")
+    return True
+
 
 #initialize the music cog to the bot.
 class music_cog(commands.Cog): 
@@ -52,12 +62,6 @@ class music_cog(commands.Cog):
         #options/settings for YoutubeDL and ffmpeg.
         self.yt_dl_options = {"format": "bestaudio/best"}
         self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.30"'}
-
-
-    def get_server_state(self, guild_id: int) -> ServerState:
-        if guild_id not in self.server_states:
-            self.server_states[guild_id] = ServerState()
-        return self.server_states[guild_id]
 
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
@@ -164,7 +168,7 @@ class music_cog(commands.Cog):
                 return search
             else:
                 log.info("search_YT, else")
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 with YoutubeDL(self.yt_dl_options) as ydl:
                     info = await loop.run_in_executor(
                         None, lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
@@ -175,7 +179,7 @@ class music_cog(commands.Cog):
     #extracts audio, thumbnail, title, from the YouTube link provided by the Search_YT function.
     #Note: the search_YT function returns to the play function, which then uses this function to extract the audio.
     async def extract_YT(self, url):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         with YoutubeDL(self.yt_dl_options) as ydl:
             try:
                 info = await loop.run_in_executor(
@@ -277,6 +281,11 @@ class music_cog(commands.Cog):
             state.is_playing = False
 
 
+    def get_server_state(self, guild_id: int) -> ServerState:
+            if guild_id not in self.server_states:
+                self.server_states[guild_id] = ServerState()
+            return self.server_states[guild_id]
+
 
 #------------------------------CALLABLE COMMANDS------------------------------------------------------------------------------------
 
@@ -285,69 +294,63 @@ class music_cog(commands.Cog):
             aliases = ["pl"],
             help = ""
         )
+    @commands.check(ensure_voice)
     
     async def play(self, ctx, *args):
         log.info("Play command called!")
         search = " ".join(args)
         state = self.get_server_state(int(ctx.guild.id))
 
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
-        else:
-            if not args:
-                log.debug("Play, 1")
-                if len(state.music_queue) == 0:
-                    log.debug("Play, 2")
-                    await ctx.send("there are no more songs in queue.")
-                    return
-                elif state.is_playing == False:
-                    if state.music_queue == None or state.vc == None:
-                        log.debug("Play, 3")
-                        await self.play_music(ctx)
-                    else:
-                        log.debug("Play, 4")
-                        state.is_paused = False
-                        state.is_playing = True
-                        state.vc.resume()
+        if not args:
+            log.debug("Play, 1")
+            if len(state.music_queue) == 0:
+                log.debug("Play, 2")
+                await ctx.send("there are no more songs in queue.")
+                return
+            elif state.is_playing == False:
+                if state.music_queue == None or state.vc == None:
+                    log.debug("Play, 3")
+                    await self.play_music(ctx)
                 else:
-                    log.debug("Play, 5")
-                    return
-            elif args:
-                loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
-                state.searching_message = await ctx.send(embed = loading_embed)
-                log.debug("Play, 6")
-                search_results = await self.search_YT(search)
-                log.debug(search_results)
-                song = await self.extract_YT(search_results)
-                if song == False:
-                    log.debug("Play, 7")
-                    log.debug(song)
-                    await ctx.send("Could not download song. Incorrect format, try again with some different keywords.")
-                else:
-                    log.debug("Play, 8")
-                    state.music_queue.append([song, ctx.author.voice.channel])
-                    log.debug(state.music_queue)
+                    log.debug("Play, 4")
+                    state.is_paused = False
+                    state.is_playing = True
+                    state.vc.resume()
+            else:
+                log.debug("Play, 5")
+                return
+        elif args:
+            loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
+            state.searching_message = await ctx.send(embed = loading_embed)
+            log.debug("Play, 6")
+            search_results = await self.search_YT(search)
+            log.debug(search_results)
+            song = await self.extract_YT(search_results)
+            if song == False:
+                log.debug("Play, 7")
+                log.debug(song)
+                await ctx.send("Could not download song. Incorrect format, try again with some different keywords.")
+            else:
+                log.debug("Play, 8")
+                state.music_queue.append([song, ctx.author.voice.channel])
+                log.debug(state.music_queue)
 
-                    if not state.is_playing and state.is_paused:
-                        log.debug("Play, 9")
-                        state.queue_index += 1
-                        await self.play_music(ctx)
-                    elif not state.is_playing:
-                        log.debug("Play, 10")
-                        await self.play_music(ctx)
+                if not state.is_playing and state.is_paused:
+                    log.debug("Play, 9")
+                    state.queue_index += 1
+                    await self.play_music(ctx)
+                elif not state.is_playing:
+                    log.debug("Play, 10")
+                    await self.play_music(ctx)
+                else:
+                    log.debug("Play, 11")
+                    if state.searching_message:
+                        message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
+                        state.song_added_message = await state.searching_message.edit(embed = message)
+                        state.searching_message = None
                     else:
-                        log.debug("Play, 11")
-                        if state.searching_message:
-                            message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
-                            state.song_added_message = await state.searching_message.edit(embed = message)
-                            state.searching_message = None
-                        else:
-                            message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
-                            state.song_added_message = await ctx.send(embed = message)
+                        message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
+                        state.song_added_message = await ctx.send(embed = message)
 
 
                 
@@ -357,42 +360,36 @@ class music_cog(commands.Cog):
         aliases = ["insert"],
         help = ""
         )
+    @commands.check(ensure_voice)
     async def add(self, ctx, *args):
             log.info("Add command called!")
             search = " ".join(args)
             state = self.get_server_state(int(ctx.guild.id))
-            if ctx.author.voice == None:
-                await ctx.send("You must be connected to a voice channel to send commands.")
-                return
-            elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-                await ctx.send("You must be connected to the same vc as the bot to send commands.")
-                return
+            if not args:
+                await ctx.send("You need to provide a search term to add a song to the queue.")
             else:
-                if not args:
-                    await ctx.send("You need to provide a search term to add a song to the queue.")
-                else:
-                    try:
-                        log.debug("Add, 9")
-                        loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
-                        state.searching_message = await ctx.send(embed = loading_embed)
-                        search_results = await self.search_YT(search)
-                        song = await self.extract_YT(search_results)
-                        if song == False:
-                            log.debug("Add, 10")
-                            await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
+                try:
+                    log.debug("Add, 9")
+                    loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
+                    state.searching_message = await ctx.send(embed = loading_embed)
+                    search_results = await self.search_YT(search)
+                    song = await self.extract_YT(search_results)
+                    if song == False:
+                        log.debug("Add, 10")
+                        await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
+                    else:
+                        log.debug("Add, 11")
+                        state.music_queue.insert(state.queue_index + 1, [song, ctx.author.voice.channel])
+                        if state.searching_message:
+                            message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
+                            await state.searching_message.edit(embed = message)
+                            state.searching_message = None
                         else:
-                            log.debug("Add, 11")
-                            state.music_queue.insert(state.queue_index + 1, [song, ctx.author.voice.channel])
-                            if state.searching_message:
-                                message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
-                                await state.searching_message.edit(embed = message)
-                                state.searching_message = None
-                            else:
-                                message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
-                                await ctx.send(embed = message)
-                    except Exception as e:
-                        log.error("Add, 12")
-                        log.exception(f"Add, 12: {e}")
+                            message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
+                            await ctx.send(embed = message)
+                except Exception as e:
+                    log.error("Add, 12")
+                    log.exception(f"Add, 12: {e}")
 
 
 
@@ -401,26 +398,20 @@ class music_cog(commands.Cog):
         aliases = ["stop"],
         help = ""
         )
+    @commands.check(ensure_voice)
     async def pause(self, ctx):
         log.info("Pause command called!")
         state = self.get_server_state(int(ctx.guild.id))
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
-        else:
-            try:
-                if not state.vc:
-                    await ctx.send("There's nothing to pause. The bot is not connected to a voice channel.")
-                elif state.is_playing:
-                    await ctx.send("Audio paused!")
-                    state.is_playing = False
-                    state.is_paused = True
-                    state.vc.pause()
-            except Exception as e:
-                log.exception(f"Pause, 1: {e}")
+        try:
+            if not state.vc:
+                await ctx.send("There's nothing to pause. The bot is not connected to a voice channel.")
+            elif state.is_playing:
+                await ctx.send("Audio paused!")
+                state.is_playing = False
+                state.is_paused = True
+                state.vc.pause()
+        except Exception as e:
+            log.exception(f"Pause, 1: {e}")
 
 
 
@@ -429,25 +420,19 @@ class music_cog(commands.Cog):
         aliases = ["sk", "next"],
         help = ""
     )
+    @commands.check(ensure_voice)
     async def skip(self,ctx):
         state = self.get_server_state(int(ctx.guild.id))
         log.info("Skip command called!")
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
-        else:
-            try:
-                if state.queue_index >= len(state.music_queue) - 1:
-                    await ctx.send("End of queue.")
-                elif state.vc != None and state.vc:
-                    state.vc.pause()
-                    state.queue_index += 1
-                    await self.play_music(ctx)
-            except Exception as e:
-                log.exception(f"Skip: {e}")
+        try:
+            if state.queue_index >= len(state.music_queue) - 1:
+                await ctx.send("End of queue.")
+            elif state.vc != None and state.vc:
+                state.vc.pause()
+                state.queue_index += 1
+                await self.play_music(ctx)
+        except Exception as e:
+            log.exception(f"Skip: {e}")
 
 
 
@@ -456,25 +441,19 @@ class music_cog(commands.Cog):
         aliases = ["pr"],
         help = ""
     )
+    @commands.check(ensure_voice)
     async def previous(self, ctx):
         log.info("Previous command called!")
         state = self.get_server_state(int(ctx.guild.id))
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
-        else:
-            try:
-                if state.queue_index <= 0:
-                    await ctx.send("there is no previous song in queue.")
-                elif state.vc != None and state.vc:
+        try:
+            if state.queue_index <= 0:
+                await ctx.send("there is no previous song in queue.")
+            elif state.vc != None and state.vc:
                     state.vc.pause()
                     state.queue_index -= 1
                     await self.play_music(ctx)
-            except Exception as e:
-                log.exception(f"Previous: {e}")
+        except Exception as e:
+            log.exception(f"Previous: {e}")
 
 
 
@@ -531,15 +510,10 @@ class music_cog(commands.Cog):
         aliases = ["c", "empty"],
         help = ""
     )
+    @commands.check(ensure_voice)
     async def clear(self, ctx):
         log.info("Clear command called!")
         state = self.get_server_state(int(ctx.guild.id))
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
         try:
             if len(state.music_queue) > state.queue_index +1:
                 await ctx.send("The queue has been cleared!")
@@ -556,15 +530,10 @@ class music_cog(commands.Cog):
             aliases = ["rem"],
             help = ""
             )
+    @commands.check(ensure_voice)
     async def remove(self, ctx):
         log.info("Remove command called!")
         state = self.get_server_state(int(ctx.guild.id))
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
         try:
             if state.music_queue != [] and (len(state.music_queue) - state.queue_index) >= 2:
                 song = state.music_queue[-1][0]
@@ -583,15 +552,10 @@ class music_cog(commands.Cog):
         aliases = ["l"],
         help = ""
     )
+    @commands.check(ensure_voice)
     async def leave(self, ctx):
         log.info("Leave command called!")
         state = self.get_server_state(int(ctx.guild.id))
-        if ctx.author.voice == None:
-            await ctx.send("You must be connected to a voice channel to send commands.")
-            return
-        elif state.vc != None and ctx.author.voice.channel != state.vc.channel:
-            await ctx.send("You must be connected to the same vc as the bot to send commands.")
-            return
         try:
             state.is_playing = state.is_paused = False
             state.music_queue = []
