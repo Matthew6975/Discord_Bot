@@ -16,7 +16,7 @@ class text_cog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("text_cog is running!")
+        log.debug("text_cog is running!")
         #self.bot.loop.create_task(self.daily_shrimp())
             
 
@@ -62,7 +62,7 @@ class text_cog(commands.Cog):
     
     async def kill(self, ctx):
         self.image = discord.File(r"C:\Coding Projects\earth_explosion.jpg")
-        print("kill command called!")
+        log("kill command called!")
         self.kill_calls += 1
         if self.kill_calls == 1:
             await ctx.send("How messed up are you!? You're just going to use the kill command when you don't even know what it does? Psychotic!")
@@ -79,7 +79,7 @@ class text_cog(commands.Cog):
             await ctx.send("You did this")
             self.kill_calls = 0
         else:
-            print(f"self.kill_calls = {self.kill_calls}")
+            log.error(f"self.kill_calls = {self.kill_calls}")
             self.kill_calls = 0
             await ctx.send("--ERROR-- That broke something, but it should be reset now. Try again!")
 
@@ -118,3 +118,26 @@ class text_cog(commands.Cog):
         jokes.remove(response)
         used_jokes.append(response)
         await ctx.send(response)
+
+
+    async def gen_help_embed(self):
+            try:
+                log.debug("generating help embed.")
+                help_embed = discord.Embed(
+                title = "Available Commands:",
+                description ="**!play, !pl (your search here without the parentheses) -** Causes the bot to join the VC you are in and plays the audio returned from your search. Also resumes music if it is paused as well as adds a song to queue if a song is currently playing.\n\n**!add (your search here without the parentheses) -** Inserts song as next in queue.\n\n**!pause, !stop, -** Stops the music from playing. Can be resumed with !play.\n\n**!skip, !sk, !next -** Skips the current song if there is a song in queue to skip to.\n\n**!previous, !pr -** Goes back and plays the previous song. Does not alter the queue.\n\n**!queue, !q, !list -** Lists the current song playing and up to the next 5 in queue.\n\n**!clear, !c, !empty -** Clears the queue after the current song. Leaves previously played queue in tact.\n\n**!remove, !rem -** Removes the last added song from the queue.\n\n**!leave, !l -** Causes the bot to leave the VC. Clears queue entirely.\n\n**!commands, !options -** Returns a list of all available commands.\n\n**!roast, !ro -** Returns a sick burn.\n\n**!mama, !ma -** Returns a random yo mama joke\n\n**!kill, !k -**" )
+                return help_embed
+            except Exception as e:
+                log.error("error generating help embed")
+                log.error(e)
+        
+    @commands.command(
+        name = "commands",
+        aliases = ["options"],
+        help = ""
+        )
+    
+    async def help(self, ctx):
+        print("Commands command called!")
+        help = await self.gen_help_embed()
+        await ctx.send(embed = help)

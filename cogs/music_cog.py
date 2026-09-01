@@ -1,47 +1,15 @@
 import discord
 from discord.ext import commands
 import asyncio
-from yt_dlp import YoutubeDL
-from enum import Enum
 import logging
-import dataclasses
-from dataclasses import dataclass, field
-from typing import Optional
+from utils.models import ServerState, EmbedType
+from utils.embeds import gen_embed
+from utils.youtube import search_YT, extract_YT, ffmpeg_options
 
 log = logging.getLogger(__name__)
 
-#This dataclass is here to track the state of the bot in each server.
-#This will replace the need to track 8 different dictionaries for each server and will no longer require [id] everywhere.
-@dataclass
-class ServerState:
-    is_playing: bool = False
-    is_paused: bool = False
-    music_queue: list = field(default_factory=list)
-    queue_index: int = 0
-    vc: Optional[discord.VoiceClient] = None
-    searching_message: Optional[discord.Message] = None
-    now_playing_message: Optional[discord.Message] = None
-    song_added_message: Optional[discord.Message] = None
-    vc_channel: Optional[discord.VoiceChannel] = None
-
-
-@dataclass
-class Song:
-    title: str
-    link: str
-    thumbnail: str
-    source: str
-
-
 async def setup(bot):
     await bot.add_cog(music_cog(bot))
-
-class EnumType(Enum):
-    NOW_PLAYING = 1
-    SONG_ADDED = 2
-    SONG_REMOVED = 3
-    SONG_NEXT = 4
-    SEARCHING = 5
 
 async def ensure_voice(ctx):
     state = ctx.bot.cogs['music_cog'].get_server_state(int(ctx.guild.id))
@@ -58,20 +26,9 @@ async def ensure_voice(ctx):
 class music_cog(commands.Cog): 
     def __init__(self, bot):
         self.bot = bot
-        
-        #embed colors to reference later.
-        self.embed_blue = 0x2c76dd
-        self.embed_red = 0xdf1141
-        self.embed_green = 0x0eaa51
-        self.embed_yellow = 0xFFFF00
-        self.embed_purple = 0x800080
 
         #Initialize the server states dictionary to track the state of the bot in each server.
         self.server_states = {}
-
-        #options/settings for YoutubeDL and ffmpeg.
-        self.yt_dl_options = {"format": "bestaudio/best"}
-        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.30"'}
 
 
     #listener that runs when the bot is ready. Sets all variables to default values each time the code is run/re-run.
@@ -97,63 +54,14 @@ class music_cog(commands.Cog):
                 state.searching_message = state.now_playing_message = state.song_added_message = state.vc = None
 
 
+
 #-----------------------------------NON-CALLABLE FUNCTIONS-----------------------------------------------------
-    #Generates different embeds to be sent in the chat based on the type used to call the function.
-    #generally used to show what is playing/what was added to the queue.
-    async def gen_embed(self, ctx, song, embed_type):
-        if song:
-            title = song.title
-            link = song.link
-            thumbnail = song.thumbnail
-        else:
-            title = link = thumbnail = None
 
-        author = ctx.author.display_name
-        avatar = ctx.author.avatar
 
-        if embed_type == EnumType.NOW_PLAYING:
-            embed = discord.Embed(
-                title = "Now Playing",
-                description = f"[{title}]({link})",
-                color = self.embed_blue
-                )
-            embed.set_thumbnail(url=thumbnail)
-            embed.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
-
-        elif embed_type == EnumType.SONG_ADDED:
-            embed = discord.Embed(
-                title = "Song Added to Queue!",
-                description = f"[{title}]({link})",
-                color = self.embed_green
-                )
-            embed.set_thumbnail(url=thumbnail)
-            embed.set_footer(text = f"Song Added by: {str(author)}", icon_url = avatar)
-        
-        elif embed_type == EnumType.SONG_REMOVED:
-            embed = discord.Embed(
-                title = "Song Removed From Queue!",
-                description = f"[{title}]({link})",
-                color = self.embed_red
-                )
-            embed.set_thumbnail(url=thumbnail)
-            embed.set_footer(text = f"Song Removed by: {str(author)}", icon_url = avatar)
-
-        elif embed_type == EnumType.SONG_NEXT:
-            embed = discord.Embed(
-                title = "Song Inserted Next in Queue!",
-                description = f"[{title}]({link})",
-                color = self.embed_purple
-                )
-            embed.set_thumbnail(url=thumbnail)
-            embed.set_footer(text = f"Song Inserted by: {str(author)}", icon_url = avatar)
-
-        elif embed_type == EnumType.SEARCHING:
-            embed = discord.Embed(
-                title = "Searching for song ...",
-                description = "searching for song ... please wait.",
-                color = self.embed_blue
-            )
-        return embed
+    def get_server_state(self, guild_id: int) -> ServerState:
+        if guild_id not in self.server_states:
+            self.server_states[guild_id] = ServerState()
+        return self.server_states[guild_id]
 
 
     #Causes the bot to join the VC of the user that called the command. 
@@ -170,41 +78,6 @@ class music_cog(commands.Cog):
                 return
         else:
             await state.vc.move_to(channel)
-
-
-    #this function searches for a YouTube link based on the search criteria provided by the user who submits the call
-    #If they provide a link, it sends that link off to have the audio extracted.
-    async def search_YT(self, search):
-            if "https://www.youtube.com/watch?v=" in search or "https://youtu.be/" in search:
-                log.info("search_YT, if")
-                return search
-            else:
-                log.info("search_YT, else")
-                loop = asyncio.get_running_loop()
-                with YoutubeDL(self.yt_dl_options) as ydl:
-                    info = await loop.run_in_executor(
-                        None, lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
-                    )
-                    return info['entries'][0]['webpage_url']
-    
-
-    #extracts audio, thumbnail, title, from the YouTube link provided by the Search_YT function.
-    #Note: the search_YT function returns to the play function, which then uses this function to extract the audio.
-    async def extract_YT(self, url):
-        loop = asyncio.get_running_loop()
-        with YoutubeDL(self.yt_dl_options) as ydl:
-            try:
-                info = await loop.run_in_executor(
-                    None, lambda: ydl.extract_info(url, download=False)
-                )
-            except:
-                return False
-        return Song(
-            link=info.get("webpage_url", ""),
-            thumbnail=info["thumbnails"][-1]["url"],
-            source=info["url"],
-            title=info["title"],
-        )
     
 
     def play_next_callback(self, ctx, e):
@@ -240,11 +113,11 @@ class music_cog(commands.Cog):
                     log.error(f"Failed to delete now playing message: {e}")
 
             #you'll see this code a lot. This is the block that calls gen_embed to generate a embed to send to the chat.
-            playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
+            playing_embed = await gen_embed(ctx, song, EmbedType.NOW_PLAYING)
             state.now_playing_message = await ctx.send(embed = playing_embed)
 
-            state.vc.play(discord.FFmpegOpusAudio(song.source, **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
-            # state.vc.play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
+            state.vc.play(discord.FFmpegOpusAudio(song.source, **ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+            # state.vc.play(discord.FFmpegOpusAudio(song["source"], **ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
         
         #end of queue handling. Sends a message letting the user(s) know that the queue is empty.
         else:
@@ -255,7 +128,7 @@ class music_cog(commands.Cog):
 
 
     #kicks off the music playing process. Very similar to the play next function in most of it's design.
-    #upon reviewing this code, I think I could probably combine the two functions into one to save on code. Will look into this.
+    #upon reviewing this code, I think I could probably combine the two functions into one to practice DRY coding. Will look into this.
     async def play_music(self, ctx):
         log.info("play music called")
         state = self.get_server_state(int(ctx.guild.id))
@@ -276,27 +149,21 @@ class music_cog(commands.Cog):
                     log.error(f"Failed to delete now playing message: {e}")
 
             if state.searching_message:
-                playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
+                playing_embed = await gen_embed(ctx, song, EmbedType.NOW_PLAYING)
                 state.now_playing_message = await state.searching_message.edit(embed = playing_embed)
                 state.searching_message = None
             else:
-                playing_embed = await self.gen_embed(ctx, song, EnumType.NOW_PLAYING)
+                playing_embed = await gen_embed(ctx, song, EmbedType.NOW_PLAYING)
                 state.now_playing_message = await ctx.send(embed = playing_embed)
                 
             #state.vc.play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
-            state.vc.play(discord.FFmpegOpusAudio(song.source, **self.ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+            state.vc.play(discord.FFmpegOpusAudio(song.source, **ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
             
         else:
             log.debug("play music, 2")
             await ctx.send("There are no more songs in the queue")
             state.queue_index += 1
             state.is_playing = False
-
-
-    def get_server_state(self, guild_id: int) -> ServerState:
-            if guild_id not in self.server_states:
-                self.server_states[guild_id] = ServerState()
-            return self.server_states[guild_id]
 
 
 #------------------------------CALLABLE COMMANDS------------------------------------------------------------------------------------
@@ -333,12 +200,12 @@ class music_cog(commands.Cog):
                 log.debug("Play, 5")
                 return
         elif args:
-            loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
+            loading_embed = await gen_embed(ctx, None, EmbedType.SEARCHING)
             state.searching_message = await ctx.send(embed = loading_embed)
             log.debug("Play, 6")
-            search_results = await self.search_YT(search)
+            search_results = await search_YT(search)
             log.debug("search_results" + str(search_results))
-            song = await self.extract_YT(search_results)
+            song = await extract_YT(search_results)
             if song == False:
                 log.debug("Play, 7")
                 await ctx.send("Could not download song. Incorrect format, try again with some different keywords.")
@@ -357,11 +224,11 @@ class music_cog(commands.Cog):
                 else:
                     log.debug("Play, 11")
                     if state.searching_message:
-                        message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
+                        message = await gen_embed(ctx, song, EmbedType.SONG_ADDED)
                         state.song_added_message = await state.searching_message.edit(embed = message)
                         state.searching_message = None
                     else:
-                        message = await self.gen_embed(ctx, song, EnumType.SONG_ADDED)
+                        message = await gen_embed(ctx, song, EmbedType.SONG_ADDED)
                         state.song_added_message = await ctx.send(embed = message)
 
 
@@ -382,10 +249,10 @@ class music_cog(commands.Cog):
             else:
                 try:
                     log.debug("Add, 9")
-                    loading_embed = await self.gen_embed(ctx, None, EnumType.SEARCHING)
+                    loading_embed = await gen_embed(ctx, None, EmbedType.SEARCHING)
                     state.searching_message = await ctx.send(embed = loading_embed)
-                    search_results = await self.search_YT(search)
-                    song = await self.extract_YT(search_results)
+                    search_results = await search_YT(search)
+                    song = await extract_YT(search_results)
                     if song == False:
                         log.debug("Add, 10")
                         await ctx.send("Could not download the song. Incorrect format, try some different keywords.")
@@ -393,11 +260,11 @@ class music_cog(commands.Cog):
                         log.debug("Add, 11")
                         state.music_queue.insert(state.queue_index + 1, song)
                         if state.searching_message:
-                            message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
+                            message = await gen_embed(ctx, song, EmbedType.SONG_NEXT)
                             await state.searching_message.edit(embed = message)
                             state.searching_message = None
                         else:
-                            message = await self.gen_embed(ctx, song, EnumType.SONG_NEXT)
+                            message = await gen_embed(ctx, song, EmbedType.SONG_NEXT)
                             await ctx.send(embed = message)
                 except Exception as e:
                     log.error("Add, 12")
@@ -549,7 +416,7 @@ class music_cog(commands.Cog):
         try:
             if state.music_queue != [] and (len(state.music_queue) - state.queue_index) >= 2:
                 song = state.music_queue[-1]
-                message = await self.gen_embed(ctx, song, EnumType.SONG_REMOVED)
+                message = await gen_embed(ctx, song, EmbedType.SONG_REMOVED)
                 await ctx.send(embed = message)
                 state.music_queue = state.music_queue[:-1]
             else:
