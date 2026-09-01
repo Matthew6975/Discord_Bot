@@ -5,7 +5,6 @@ from utils.models import EmbedType
 embed_blue = 0x2c76dd
 embed_red = 0xdf1141
 embed_green = 0x0eaa51
-embed_yellow = 0xFFFF00
 embed_purple = 0x800080
 
 
