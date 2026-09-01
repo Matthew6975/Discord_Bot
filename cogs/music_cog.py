@@ -344,6 +344,7 @@ class music_cog(commands.Cog):
     async def queue(self, ctx):
         log.info("Queue command called!")
         state = self.get_server_state(int(ctx.guild.id))
+        embed_yellow = 0xFFFF00
         try:
             return_value = ""
             if state.music_queue == []:
@@ -376,7 +377,7 @@ class music_cog(commands.Cog):
             queue = discord.Embed(
                     title = "Current Queue:",
                     description = return_value,
-                    color = self.embed_yellow
+                    color = embed_yellow
             )
             await ctx.send(embed = queue)
         except Exception as e:
