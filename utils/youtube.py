@@ -7,7 +7,10 @@ log = logging.getLogger(__name__)
 
 #options/settings for YoutubeDL and ffmpeg.
 yt_dl_options = {"format": "bestaudio/best"}
-ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.30"'}
+ffmpeg_options = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -filter:a "loudnorm=I=-16:TP=-1.5:LRA=11"'
+    }
 
 
 
