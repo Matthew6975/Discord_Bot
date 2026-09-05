@@ -347,13 +347,12 @@ class music_cog(commands.Cog):
         embed_yellow = 0xFFFF00
         try:
             return_value = ""
-            if state.music_queue == []:
+            if not state.music_queue or state.queue_index >= len(state.music_queue):
                 await ctx.send("There are currently no songs in the queue!")
                 return
 
             for i in range(state.queue_index, len(state.music_queue)):
-                up_next_songs = len(state.music_queue) - state.queue_index
-                if i > 6 + up_next_songs:
+                if (i - state.queue_index) > 6:
                     break
                 return_index = i - state.queue_index
                 if return_index == 0:
@@ -370,9 +369,9 @@ class music_cog(commands.Cog):
                     return_index = 6
                 return_value += f"{return_index} - [{state.music_queue[i].title}]({state.music_queue[i].link})\n"
 
-                if return_value == "":
-                    await ctx.send("There are no songs in the queue.")
-                    return
+            if return_value == "":
+                await ctx.send("There are currently no songs in the queue.")
+                return
                 
             queue = discord.Embed(
                     title = "Current Queue:",
