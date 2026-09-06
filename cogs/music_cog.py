@@ -117,8 +117,13 @@ class music_cog(commands.Cog):
             state.now_playing_message = await ctx.send(embed = playing_embed)
 
             state.vc.play(discord.FFmpegOpusAudio(song.source, **ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
-            # state.vc.play(discord.FFmpegOpusAudio(song["source"], **ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
-        
+
+            #give the bot a second to fill the audio buffer before starting playback.
+            #this should help keep the playback smooth and prevent stuttering or skipping.
+            state.vc.pause()
+            await asyncio.sleep(1)
+            state.vc.resume()
+         
         #end of queue handling. Sends a message letting the user(s) know that the queue is empty.
         else:
             log.debug("play next, else")
@@ -156,8 +161,13 @@ class music_cog(commands.Cog):
                 playing_embed = await gen_embed(ctx, song, EmbedType.NOW_PLAYING)
                 state.now_playing_message = await ctx.send(embed = playing_embed)
                 
-            #state.vc.play(discord.FFmpegOpusAudio(song["source"], **self.ffmpeg_options), after = lambda e:  asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop,))
             state.vc.play(discord.FFmpegOpusAudio(song.source, **ffmpeg_options), after=lambda e: self.play_next_callback(ctx, e))
+
+            #give the bot a second to fill the audio buffer before starting playback.
+            #this should help keep the playback smooth and prevent stuttering or skipping.
+            state.vc.pause()
+            await asyncio.sleep(1)
+            state.vc.resume()
             
         else:
             log.debug("play music, 2")

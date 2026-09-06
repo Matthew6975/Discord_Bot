@@ -8,8 +8,8 @@ log = logging.getLogger(__name__)
 #options/settings for YoutubeDL and ffmpeg.
 yt_dl_options = {"format": "bestaudio/best"}
 ffmpeg_options = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -filter:a "loudnorm=I=-16:TP=-1.5:LRA=11"'
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -thread_queue_size 4096',
+    'options': '-vn -filter:a "loudnorm=I=-16:TP=-1.7:LRA=11"'
     }
 
 
@@ -24,7 +24,7 @@ async def search_YT(search):
             log.info("search_YT, else")
             loop = asyncio.get_running_loop()
             with YoutubeDL(yt_dl_options) as ydl:
-                info = await loop.run_in_executor(
+                info = await asyncio.to_thread(
                     None, lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
                 )
                 return info['entries'][0]['webpage_url']
@@ -36,7 +36,7 @@ async def extract_YT(url):
     loop = asyncio.get_running_loop()
     with YoutubeDL(yt_dl_options) as ydl:
         try:
-            info = await loop.run_in_executor(
+            info = await asyncio.to_thread(
                 None, lambda: ydl.extract_info(url, download=False)
             )
         except:
