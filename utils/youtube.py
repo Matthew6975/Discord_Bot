@@ -25,7 +25,7 @@ async def search_YT(search):
             loop = asyncio.get_running_loop()
             with YoutubeDL(yt_dl_options) as ydl:
                 info = await asyncio.to_thread(
-                    None, lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
+                    lambda: ydl.extract_info(f"ytsearch:{search}", download=False)
                 )
                 return info['entries'][0]['webpage_url']
 
@@ -37,7 +37,7 @@ async def extract_YT(url):
     with YoutubeDL(yt_dl_options) as ydl:
         try:
             info = await asyncio.to_thread(
-                None, lambda: ydl.extract_info(url, download=False)
+                lambda: ydl.extract_info(url, download=False)
             )
         except:
             return False

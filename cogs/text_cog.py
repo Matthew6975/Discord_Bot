@@ -3,7 +3,10 @@ from discord.ext import commands
 import datetime
 import asyncio
 import random
+import logging
 from lists import shrimp_facts, used_shrimp_facts, burns, used_burns, jokes, used_jokes
+
+log = logging.getLogger(__name__)
 
 async def setup(bot):
     await bot.add_cog(text_cog(bot))
